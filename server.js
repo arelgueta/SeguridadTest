@@ -13,15 +13,16 @@ const io = socketIo(server, {
     origin: "*",
     methods: ["GET", "POST"]
   },
-  transports: ['websocket', 'polling'] // Añadir esto para Render
+  transports: ['websocket', 'polling']
 });
 
 // Middleware
 app.use(cors());
 app.use(express.static('public'));
 
-// Almacenamiento simple de dispositivos conectados
+// Almacenamiento de dispositivos y streams
 const connectedDevices = new Map();
+const activeStreams = new Map();
 
 // Ruta principal - Página para los usuarios
 app.get('/', (req, res) => {
@@ -38,7 +39,8 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    connectedDevices: connectedDevices.size
+    connectedDevices: connectedDevices.size,
+    activeStreams: activeStreams.size
   });
 });
 
@@ -46,67 +48,68 @@ app.get('/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log('Usuario conectado:', socket.id);
   
-  // Enviar lista actual de dispositivos al nuevo cliente
+  // Enviar lista actual de dispositivos al admin
   if (socket.handshake.headers.referer && socket.handshake.headers.referer.includes('admin')) {
-    // Es el panel de admin
     socket.emit('devices-updated', Array.from(connectedDevices.values()));
   }
   
   // Cuando un cliente se conecta con su cámara
   socket.on('register-device', (deviceData) => {
-    const deviceName = deviceData.name || 
-                      (navigator.userAgentData ? navigator.userData.brands[0].brand : 'Dispositivo Móvil') || 
-                      'Dispositivo Móvil';
-    
     connectedDevices.set(socket.id, {
       id: socket.id,
-      name: deviceName,
+      name: deviceData.name || 'Dispositivo Móvil',
       timestamp: new Date(),
-      streamActive: true,
-      userAgent: deviceData.userAgent || 'Navegador desconocido'
+      streamActive: true
     });
     
-    // Notificar a todos los administradores
     io.emit('devices-updated', Array.from(connectedDevices.values()));
-    console.log(`Dispositivo registrado: ${socket.id}. Total: ${connectedDevices.size}`);
+    console.log(`Dispositivo registrado: ${socket.id}`);
   });
   
-  // Cuando un administrador solicita ver un dispositivo
+  // Cuando un admin solicita ver un dispositivo
   socket.on('request-view', (deviceId) => {
     socket.to(deviceId).emit('start-streaming');
     console.log(`Solicitando transmisión del dispositivo: ${deviceId}`);
   });
   
-  // Cuando un dispositivo envía su stream (simulación)
-  socket.on('stream-data', (data) => {
-    // Reenviar a los administradores
-    socket.broadcast.emit('stream-frame', {
+  // Cuando un dispositivo envía un frame de video
+  socket.on('video-frame', (data) => {
+    // Almacenar el frame más reciente
+    activeStreams.set(socket.id, {
+      frame: data.frame,
+      timestamp: new Date()
+    });
+    
+    // Enviar a los administradores
+    socket.broadcast.emit('video-frame', {
       deviceId: socket.id,
-      data: data,
+      frame: data.frame,
       timestamp: new Date().toISOString()
     });
   });
   
-  // Cuando un administrador solicita la lista de dispositivos
-  socket.on('get-devices', () => {
-    socket.emit('devices-updated', Array.from(connectedDevices.values()));
+  // Cuando un admin solicita el estado de un stream
+  socket.on('get-stream', (deviceId) => {
+    const streamData = activeStreams.get(deviceId);
+    if (streamData) {
+      socket.emit('video-frame', {
+        deviceId: deviceId,
+        frame: streamData.frame,
+        timestamp: streamData.timestamp.toISOString()
+      });
+    }
   });
   
   // Cuando un dispositivo se desconecta
-  socket.on('disconnect', (reason) => {
-    console.log('Usuario desconectado:', socket.id, 'Razón:', reason);
+  socket.on('disconnect', () => {
+    console.log('Usuario desconectado:', socket.id);
     connectedDevices.delete(socket.id);
+    activeStreams.delete(socket.id);
     io.emit('devices-updated', Array.from(connectedDevices.values()));
-    console.log(`Dispositivo eliminado: ${socket.id}. Total: ${connectedDevices.size}`);
   });
 });
 
-// Obtener puerto de Render o usar 3000 localmente
 const PORT = process.env.PORT || 3000;
-
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor ejecutándose en puerto ${PORT}`);
-  console.log(`URL principal: http://localhost:${PORT}`);
-  console.log(`Panel de admin: http://localhost:${PORT}/admin`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
 });
