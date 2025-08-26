@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Piazza Domótica</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="admin-page">
+    <div class="container">
+        <header>
+            <div class="logo">
+                <h1>🏠 Piazza Domótica - Panel de Control</h1>
+                <p>Gestión de dispositivos conectados</p>
+            </div>
+            <div class="status" id="status">
+                <span class="status-dot"></span>
+                <span>Sistema activo - <span id="deviceCount">0</span> dispositivos</span>
+            </div>
+        </header>
+        
+        <div class="main-content">
+            <div class="video-container">
+                <div class="video-header">
+                    <h2>Vista previa principal</h2>
+                    <div id="currentDevice">No hay dispositivos seleccionados</div>
+                </div>
+                <div class="video-wrapper">
+                    <div id="mainVideo" class="video-placeholder">
+                        <p>Selecciona un dispositivo para ver su transmisión</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="devices-panel">
+                <h2 class="panel-title">
+                    <span>📱 Dispositivos conectados</span>
+                </h2>
+                
+                <div class="devices-list" id="devicesList">
+                    <div class="empty-state">
+                        <p>No hay dispositivos conectados</p>
+                    </div>
+                </div>
+                
+                <div class="controls">
+                    <button class="btn btn-secondary" id="refreshBtn">
+                        <span>↻ Actualizar</span>
+                    </button>
+                    <button class="btn btn-primary" id="broadcastBtn" disabled>
+                        <span>▶ Transmitir en pantalla</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Piazza Domótica - Sistema de visualización para exposición © 2023</p>
+        </footer>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        let selectedDeviceId = null;
+        let connectedDevices = [];
+        
+        // Elementos DOM
+        const devicesList = document.getElementById('devicesList');
+        const deviceCount = document.getElementById('deviceCount');
+        const currentDevice = document.getElementById('currentDevice');
+        const mainVideo = document.getElementById('mainVideo');
+        const broadcastBtn = document.getElementById('broadcastBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        
+        // Actualizar lista de dispositivos
+        function updateDevicesList(devices) {
+            deviceCount.textContent = devices.length;
+            connectedDevices = devices;
+            
+            if (devices.length === 0) {
+                devicesList.innerHTML = '<div class="empty-state"><p>No hay dispositivos conectados</p></div>';
+                broadcastBtn.disabled = true;
+                return;
+            }
+            
+            devicesList.innerHTML = '';
+            devices.forEach(device => {
+                const isActive = device.id === selectedDeviceId;
+                const deviceElement = document.createElement('div');
+                deviceElement.className = `device-card ${isActive ? 'active' : ''}`;
+                deviceElement.innerHTML = `
+                    <div class="device-header">
+                        <div class="device-name">${device.name}</div>
+                        <div class="device-time">Conectado hace ${Math.round((new Date() - new Date(device.timestamp)) / 1000)} seg</div>
+                    </div>
+                    <div class="device-status">
+                        <span class="status-indicator ${device.streamActive ? 'active' : 'inactive'}"></span>
+                        ${device.streamActive ? 'Transmitiendo' : 'Inactivo'}
+                    </div>
+                `;
+                
+                deviceElement.addEventListener('click', () => {
+                    selectedDeviceId = device.id;
+                    currentDevice.textContent = device.name;
+                    updateDevicesList(connectedDevices);
+                    broadcastBtn.disabled = false;
+                });
+                
+                devicesList.appendChild(deviceElement);
+            });
+        }
+        
+        // Solicitar transmisión de un dispositivo
+        function requestDeviceStream(deviceId) {
+            socket.emit('request-view', deviceId);
+            mainVideo.innerHTML = '<p>Conectando con el dispositivo...</p>';
+        }
+        
+        // Configurar eventos
+        broadcastBtn.addEventListener('click', () => {
+            if (selectedDeviceId) {
+                requestDeviceStream(selectedDeviceId);
+                mainVideo.innerHTML = '<p>Transmitiendo en pantalla principal...</p>';
+            }
+        });
+        
+        refreshBtn.addEventListener('click', () => {
+            socket.emit('get-devices');
+        });
+        
+        // Eventos de Socket.io
+        socket.on('devices-updated', updateDevicesList);
+        
+        socket.on('stream-frame', (data) => {
+            if (data.deviceId === selectedDeviceId) {
+                // En una implementación real, aquí procesarías el frame de video
+                mainVideo.innerHTML = `
+                    <div class="stream-container">
+                        <p>Recibiendo transmisión de ${connectedDevices.find(d => d.id === data.deviceId)?.name || 'dispositivo'}</p>
+                        <div class="stream-placeholder">
+                            <span>🎥 Transmisión en vivo</span>
+                        </div>
+                    </div>
+                `;
+            }
+        });
+        
+        // Solicitar lista de dispositivos al conectar
+        socket.on('connect', () => {
+            console.log('Conectado al servidor');
+        });
+    </script>
+</body>
+</html>
