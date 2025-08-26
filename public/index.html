@@ -3,153 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - Seguridad</title>
+    <title>Seguridad de Sistemas - Accede al programa</title>
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="admin-page">
+<body class="client-page">
     <div class="container">
         <header>
             <div class="logo">
-                <h1>🏠 Ceguridad - Panel de Control</h1>
-                <p>Gestión de dispositivos conectados</p>
-            </div>
-            <div class="status" id="status">
-                <span class="status-dot"></span>
-                <span>Sistema activo - <span id="deviceCount">0</span> dispositivos</span>
+                <h1>🏠 Seguridad de Sistemas</h1>
+                <p>Programa y asistencia</p>
             </div>
         </header>
         
-        <div class="main-content">
+        <div class="content">
             <div class="video-container">
-                <div class="video-header">
-                    <h2>Vista previa principal</h2>
-                    <div id="currentDevice">No hay dispositivos seleccionados</div>
-                </div>
-                <div class="video-wrapper">
-                    <div id="mainVideo" class="video-placeholder">
-                        <p>Selecciona un dispositivo para ver su transmisión</p>
-                    </div>
+                <video id="localVideo" autoplay muted playsinline></video>
+                <div class="video-overlay">
+                    <p>¡Sonríe! Estás siendo transmitido ... a algún lugar</p>
                 </div>
             </div>
             
-            <div class="devices-panel">
-                <h2 class="panel-title">
-                    <span>📱 Dispositivos conectados</span>
-                </h2>
+            <div class="info-section">
+                <h2>Bienvenido a Seguridad de sistemas</h2>
+                <p>Estás viendo en directo cómo la tecnología puede hacer tu vida más fácil cómoda y ...¿segura?</p>
                 
-                <div class="devices-list" id="devicesList">
-                    <div class="empty-state">
-                        <p>No hay dispositivos conectados</p>
+                <div class="features">
+                    <div class="feature">
+                        <span class="icon">🏠</span>
+                        <h3>Asistencia</h3>
+                        <p>¿crees que alguien sería capaz de tomar tus datos y hacer uso indebido de tu dispositivo?</p>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">🔒</span>
+                        <h3>Seguridad</h3>
+                        <p>NUNCA abras un QR sin antes saber cómo está hecho, que permisos requiere, a dónde te dirige y qué tipo de archivos descargará en tu móvil</p>
+                    </div>
+                    <div class="feature">
+                        <span class="icon">💡</span>
+                        <h3>Toma conciencia</h3>
+                        <p>El mundo es peligroso... concientízate y evangeliza </p>
                     </div>
                 </div>
                 
-                <div class="controls">
-                    <button class="btn btn-secondary" id="refreshBtn">
-                        <span>↻ Actualizar</span>
-                    </button>
-                    <button class="btn btn-primary" id="broadcastBtn" disabled>
-                        <span>▶ Transmitir en pantalla</span>
-                    </button>
+                <div class="cta">
+                   <!-- <a href="https://piazza.ar" target="_blank" class="btn">Visitar nuestro sitio web</a> -->
+                    <a href="https://www.argentina.gob.ar/justicia/convosenlaweb/situaciones/que-es-mi-identidad-digital-y-como-la-protejo" target="_blank" class="btn">¿Cómo protejo mi identidad digital?</a>
                 </div>
             </div>
         </div>
-        
-        <footer>
-            <p>Seguridad - Sistema de visualización para exposición © 2023</p>
-        </footer>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
         const socket = io();
-        let selectedDeviceId = null;
-        let connectedDevices = [];
         
-        // Elementos DOM
-        const devicesList = document.getElementById('devicesList');
-        const deviceCount = document.getElementById('deviceCount');
-        const currentDevice = document.getElementById('currentDevice');
-        const mainVideo = document.getElementById('mainVideo');
-        const broadcastBtn = document.getElementById('broadcastBtn');
-        const refreshBtn = document.getElementById('refreshBtn');
-        
-        // Actualizar lista de dispositivos
-        function updateDevicesList(devices) {
-            deviceCount.textContent = devices.length;
-            connectedDevices = devices;
-            
-            if (devices.length === 0) {
-                devicesList.innerHTML = '<div class="empty-state"><p>No hay dispositivos conectados</p></div>';
-                broadcastBtn.disabled = true;
-                return;
-            }
-            
-            devicesList.innerHTML = '';
-            devices.forEach(device => {
-                const isActive = device.id === selectedDeviceId;
-                const deviceElement = document.createElement('div');
-                deviceElement.className = `device-card ${isActive ? 'active' : ''}`;
-                deviceElement.innerHTML = `
-                    <div class="device-header">
-                        <div class="device-name">${device.name}</div>
-                        <div class="device-time">Conectado hace ${Math.round((new Date() - new Date(device.timestamp)) / 1000)} seg</div>
-                    </div>
-                    <div class="device-status">
-                        <span class="status-indicator ${device.streamActive ? 'active' : 'inactive'}"></span>
-                        ${device.streamActive ? 'Transmitiendo' : 'Inactivo'}
-                    </div>
-                `;
-                
-                deviceElement.addEventListener('click', () => {
-                    selectedDeviceId = device.id;
-                    currentDevice.textContent = device.name;
-                    updateDevicesList(connectedDevices);
-                    broadcastBtn.disabled = false;
+        // Acceder a la cámara del usuario
+        async function setupCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "user" },
+                    audio: false
                 });
                 
-                devicesList.appendChild(deviceElement);
-            });
+                const videoElement = document.getElementById('localVideo');
+                videoElement.srcObject = stream;
+                
+                // Registrar dispositivo en el servidor
+                socket.emit('register-device', {
+                    name: navigator.userAgentData?.brands[0]?.brand || 'Dispositivo Móvil'
+                });
+                
+                // Capturar y enviar frames (simplificado para el ejemplo)
+                setInterval(() => {
+                    // En un caso real, aquí capturarías y enviarías frames del video
+                    // Para este ejemplo, solo notificamos que el stream está activo
+                    socket.emit('stream-data', { active: true });
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Error accediendo a la cámara:', error);
+                alert('Por favor, permite el acceso a la cámara para disfrutar de la experiencia completa.');
+            }
         }
         
-        // Solicitar transmisión de un dispositivo
-        function requestDeviceStream(deviceId) {
-            socket.emit('request-view', deviceId);
-            mainVideo.innerHTML = '<p>Conectando con el dispositivo...</p>';
-        }
-        
-        // Configurar eventos
-        broadcastBtn.addEventListener('click', () => {
-            if (selectedDeviceId) {
-                requestDeviceStream(selectedDeviceId);
-                mainVideo.innerHTML = '<p>Transmitiendo en pantalla principal...</p>';
-            }
-        });
-        
-        refreshBtn.addEventListener('click', () => {
-            socket.emit('get-devices');
-        });
-        
-        // Eventos de Socket.io
-        socket.on('devices-updated', updateDevicesList);
-        
-        socket.on('stream-frame', (data) => {
-            if (data.deviceId === selectedDeviceId) {
-                // En una implementación real, aquí procesarías el frame de video
-                mainVideo.innerHTML = `
-                    <div class="stream-container">
-                        <p>Recibiendo transmisión de ${connectedDevices.find(d => d.id === data.deviceId)?.name || 'dispositivo'}</p>
-                        <div class="stream-placeholder">
-                            <span>🎥 Transmisión en vivo</span>
-                        </div>
-                    </div>
-                `;
-            }
-        });
-        
-        // Solicitar lista de dispositivos al conectar
-        socket.on('connect', () => {
-            console.log('Conectado al servidor');
-        });
+        // Iniciar cuando se carga la página
+        window.addEventListener('load', setupCamera);
     </script>
 </body>
 </html>
