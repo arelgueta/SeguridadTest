@@ -26,7 +26,8 @@
                     <div id="currentDevice">No hay dispositivos seleccionados</div>
                 </div>
                 <div class="video-wrapper">
-                    <div id="mainVideo" class="video-placeholder">
+                    <img id="videoFrame" src="" alt="Transmisión en vivo" style="width:100%; display:none;">
+                    <div id="videoPlaceholder" class="video-placeholder">
                         <p>Selecciona un dispositivo para ver su transmisión</p>
                     </div>
                 </div>
@@ -52,61 +53,51 @@
                     </button>
                 </div>
                 
-                <div class="connection-info">
-                    <h3>Información de conexión</h3>
-                    <p id="connectionStatus">Conectando al servidor...</p>
-                    <p id="serverUrl">URL: <span>Cargando...</span></p>
+                <div class="stream-info">
+                    <h3>Información del Stream</h3>
+                    <p>FPS: <span id="fpsCounter">0</span></p>
+                    <p>Último frame: <span id="lastFrameTime">-</span></p>
                 </div>
             </div>
         </div>
-        
-        <footer>
-            <p>Seguridad en Sistemasa - Sistema de exposición de camara</p>
-        </footer>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        // Configuración de Socket.io para Render
         const socket = io({
             transports: ['websocket', 'polling']
         });
         
         let selectedDeviceId = null;
         let connectedDevices = [];
+        let frameCount = 0;
+        let fps = 0;
+        let lastFrameTime = 0;
         
         // Elementos DOM
         const devicesList = document.getElementById('devicesList');
         const deviceCount = document.getElementById('deviceCount');
         const currentDevice = document.getElementById('currentDevice');
-        const mainVideo = document.getElementById('mainVideo');
+        const videoFrame = document.getElementById('videoFrame');
+        const videoPlaceholder = document.getElementById('videoPlaceholder');
         const broadcastBtn = document.getElementById('broadcastBtn');
         const refreshBtn = document.getElementById('refreshBtn');
-        const connectionStatus = document.getElementById('connectionStatus');
-        const serverUrl = document.getElementById('serverUrl').querySelector('span');
+        const fpsCounter = document.getElementById('fpsCounter');
+        const lastFrameTimeElement = document.getElementById('lastFrameTime');
         
-        // Mostrar estado de conexión
-        socket.on('connect', () => {
-            console.log('Conectado al servidor con ID:', socket.id);
-            connectionStatus.textContent = 'Conectado al servidor';
-            connectionStatus.style.color = '#2ecc71';
-            serverUrl.textContent = window.location.origin;
-            
-            // Solicitar lista de dispositivos al conectar
-            socket.emit('get-devices');
-        });
-        
-        socket.on('disconnect', (reason) => {
-            console.log('Desconectado del servidor:', reason);
-            connectionStatus.textContent = 'Desconectado - ' + reason;
-            connectionStatus.style.color = '#e74c3c';
-        });
-        
-        socket.on('connect_error', (error) => {
-            console.error('Error de conexión:', error);
-            connectionStatus.textContent = 'Error de conexión: ' + error.message;
-            connectionStatus.style.color = '#e74c3c';
-        });
+        // Calcular FPS
+        function updateFPS() {
+            const now = Date.now();
+            if (lastFrameTime > 0) {
+                frameCount++;
+                if (now - lastFrameTime >= 1000) {
+                    fps = frameCount;
+                    frameCount = 0;
+                    lastFrameTime = now;
+                    fpsCounter.textContent = fps;
+                }
+            }
+        }
         
         // Actualizar lista de dispositivos
         function updateDevicesList(devices) {
@@ -134,7 +125,6 @@
                         <span class="status-indicator ${device.streamActive ? 'active' : 'inactive'}"></span>
                         ${device.streamActive ? 'Transmitiendo' : 'Inactivo'}
                     </div>
-                    <div class="device-id">ID: ${device.id}</div>
                 `;
                 
                 deviceElement.addEventListener('click', () => {
@@ -142,6 +132,9 @@
                     currentDevice.textContent = device.name;
                     updateDevicesList(connectedDevices);
                     broadcastBtn.disabled = false;
+                    
+                    // Solicitar stream actual del dispositivo
+                    socket.emit('get-stream', device.id);
                 });
                 
                 devicesList.appendChild(deviceElement);
@@ -151,44 +144,44 @@
         // Solicitar transmisión de un dispositivo
         function requestDeviceStream(deviceId) {
             socket.emit('request-view', deviceId);
-            mainVideo.innerHTML = '<p>Conectando con el dispositivo...</p>';
+            videoPlaceholder.innerHTML = '<p>Conectando con el dispositivo...</p>';
         }
         
         // Configurar eventos
         broadcastBtn.addEventListener('click', () => {
             if (selectedDeviceId) {
                 requestDeviceStream(selectedDeviceId);
-                mainVideo.innerHTML = '<p>Transmitiendo en pantalla principal...</p>';
             }
         });
         
         refreshBtn.addEventListener('click', () => {
             socket.emit('get-devices');
-            mainVideo.innerHTML = '<p>Actualizando lista de dispositivos...</p>';
-            setTimeout(() => {
-                if (connectedDevices.length === 0) {
-                    mainVideo.innerHTML = '<p>No hay dispositivos conectados</p>';
-                }
-            }, 1000);
         });
         
         // Eventos de Socket.io
+        socket.on('connect', () => {
+            console.log('Conectado al servidor');
+            socket.emit('get-devices');
+        });
+        
         socket.on('devices-updated', updateDevicesList);
         
-        socket.on('stream-frame', (data) => {
+        socket.on('video-frame', (data) => {
             if (data.deviceId === selectedDeviceId) {
-                const device = connectedDevices.find(d => d.id === data.deviceId);
-                mainVideo.innerHTML = `
-                    <div class="stream-container">
-                        <p>Recibiendo transmisión de ${device?.name || 'dispositivo'}</p>
-                        <div class="stream-placeholder">
-                            <span>🎥 Transmisión en vivo</span>
-                            <div class="stream-timestamp">${new Date(data.timestamp).toLocaleTimeString()}</div>
-                        </div>
-                    </div>
-                `;
+                // Mostrar el frame de video
+                videoFrame.src = data.frame;
+                videoFrame.style.display = 'block';
+                videoPlaceholder.style.display = 'none';
+                
+                // Actualizar información del frame
+                lastFrameTime = Date.now();
+                lastFrameTimeElement.textContent = new Date(data.timestamp).toLocaleTimeString();
+                updateFPS();
             }
         });
+        
+        // Actualizar FPS cada segundo
+        setInterval(updateFPS, 1000);
     </script>
 </body>
 </html>
