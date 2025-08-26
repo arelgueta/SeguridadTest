@@ -1,16 +1,16 @@
-rid<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel de Control - Seguridad</title>
+    <title>Panel de Control - Piazza Domótica</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body class="admin-page">
     <div class="container">
         <header>
             <div class="logo">
-                <h1>🏠 Seguridad - Panel de Control</h1>
+                <h1>🏠 Piazza Domótica - Panel de Control</h1>
                 <p>Gestión de dispositivos conectados</p>
             </div>
             <div class="status" id="status">
@@ -51,17 +51,27 @@ rid<!DOCTYPE html>
                         <span>▶ Transmitir en pantalla</span>
                     </button>
                 </div>
+                
+                <div class="connection-info">
+                    <h3>Información de conexión</h3>
+                    <p id="connectionStatus">Conectando al servidor...</p>
+                    <p id="serverUrl">URL: <span>Cargando...</span></p>
+                </div>
             </div>
         </div>
         
         <footer>
-            <p>Seguridad - Sistema de visualización para exposición © 2023</p>
+            <p>Piazza Domótica - Sistema de visualización para exposición © 2023</p>
         </footer>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script>
-        const socket = io();
+        // Configuración de Socket.io para Render
+        const socket = io({
+            transports: ['websocket', 'polling']
+        });
+        
         let selectedDeviceId = null;
         let connectedDevices = [];
         
@@ -72,6 +82,31 @@ rid<!DOCTYPE html>
         const mainVideo = document.getElementById('mainVideo');
         const broadcastBtn = document.getElementById('broadcastBtn');
         const refreshBtn = document.getElementById('refreshBtn');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const serverUrl = document.getElementById('serverUrl').querySelector('span');
+        
+        // Mostrar estado de conexión
+        socket.on('connect', () => {
+            console.log('Conectado al servidor con ID:', socket.id);
+            connectionStatus.textContent = 'Conectado al servidor';
+            connectionStatus.style.color = '#2ecc71';
+            serverUrl.textContent = window.location.origin;
+            
+            // Solicitar lista de dispositivos al conectar
+            socket.emit('get-devices');
+        });
+        
+        socket.on('disconnect', (reason) => {
+            console.log('Desconectado del servidor:', reason);
+            connectionStatus.textContent = 'Desconectado - ' + reason;
+            connectionStatus.style.color = '#e74c3c';
+        });
+        
+        socket.on('connect_error', (error) => {
+            console.error('Error de conexión:', error);
+            connectionStatus.textContent = 'Error de conexión: ' + error.message;
+            connectionStatus.style.color = '#e74c3c';
+        });
         
         // Actualizar lista de dispositivos
         function updateDevicesList(devices) {
@@ -81,6 +116,7 @@ rid<!DOCTYPE html>
             if (devices.length === 0) {
                 devicesList.innerHTML = '<div class="empty-state"><p>No hay dispositivos conectados</p></div>';
                 broadcastBtn.disabled = true;
+                currentDevice.textContent = 'No hay dispositivos seleccionados';
                 return;
             }
             
@@ -98,6 +134,7 @@ rid<!DOCTYPE html>
                         <span class="status-indicator ${device.streamActive ? 'active' : 'inactive'}"></span>
                         ${device.streamActive ? 'Transmitiendo' : 'Inactivo'}
                     </div>
+                    <div class="device-id">ID: ${device.id}</div>
                 `;
                 
                 deviceElement.addEventListener('click', () => {
@@ -127,6 +164,12 @@ rid<!DOCTYPE html>
         
         refreshBtn.addEventListener('click', () => {
             socket.emit('get-devices');
+            mainVideo.innerHTML = '<p>Actualizando lista de dispositivos...</p>';
+            setTimeout(() => {
+                if (connectedDevices.length === 0) {
+                    mainVideo.innerHTML = '<p>No hay dispositivos conectados</p>';
+                }
+            }, 1000);
         });
         
         // Eventos de Socket.io
@@ -134,21 +177,17 @@ rid<!DOCTYPE html>
         
         socket.on('stream-frame', (data) => {
             if (data.deviceId === selectedDeviceId) {
-                // En una implementación real, aquí procesarías el frame de video
+                const device = connectedDevices.find(d => d.id === data.deviceId);
                 mainVideo.innerHTML = `
                     <div class="stream-container">
-                        <p>Recibiendo transmisión de ${connectedDevices.find(d => d.id === data.deviceId)?.name || 'dispositivo'}</p>
+                        <p>Recibiendo transmisión de ${device?.name || 'dispositivo'}</p>
                         <div class="stream-placeholder">
                             <span>🎥 Transmisión en vivo</span>
+                            <div class="stream-timestamp">${new Date(data.timestamp).toLocaleTimeString()}</div>
                         </div>
                     </div>
                 `;
             }
-        });
-        
-        // Solicitar lista de dispositivos al conectar
-        socket.on('connect', () => {
-            console.log('Conectado al servidor');
         });
     </script>
 </body>
