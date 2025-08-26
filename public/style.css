@@ -334,3 +334,34 @@ footer {
         height: 400px;
     }
 }
+/* Añadir al final del archivo */
+
+.connection-info {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.connection-info h3 {
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+.connection-info p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+.device-id {
+    font-size: 10px;
+    opacity: 0.6;
+    margin-top: 5px;
+    word-break: break-all;
+}
+
+.stream-timestamp {
+    font-size: 12px;
+    margin-top: 10px;
+    opacity: 0.7;
+}
