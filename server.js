@@ -12,7 +12,8 @@ const io = socketIo(server, {
   cors: {
     origin: "*",
     methods: ["GET", "POST"]
-  }
+  },
+  transports: ['websocket', 'polling'] // Añadir esto para Render
 });
 
 // Middleware
@@ -45,11 +46,21 @@ app.get('/health', (req, res) => {
 io.on('connection', (socket) => {
   console.log('Usuario conectado:', socket.id);
   
+  // Enviar lista actual de dispositivos al nuevo cliente
+  if (socket.handshake.headers.referer && socket.handshake.headers.referer.includes('admin')) {
+    // Es el panel de admin
+    socket.emit('devices-updated', Array.from(connectedDevices.values()));
+  }
+  
   // Cuando un cliente se conecta con su cámara
   socket.on('register-device', (deviceData) => {
+    const deviceName = deviceData.name || 
+                      (navigator.userAgentData ? navigator.userData.brands[0].brand : 'Dispositivo Móvil') || 
+                      'Dispositivo Móvil';
+    
     connectedDevices.set(socket.id, {
       id: socket.id,
-      name: deviceData.name || 'Dispositivo Móvil',
+      name: deviceName,
       timestamp: new Date(),
       streamActive: true,
       userAgent: deviceData.userAgent || 'Navegador desconocido'
@@ -66,18 +77,24 @@ io.on('connection', (socket) => {
     console.log(`Solicitando transmisión del dispositivo: ${deviceId}`);
   });
   
-  // Cuando un dispositivo envía su stream
+  // Cuando un dispositivo envía su stream (simulación)
   socket.on('stream-data', (data) => {
     // Reenviar a los administradores
     socket.broadcast.emit('stream-frame', {
       deviceId: socket.id,
-      data: data
+      data: data,
+      timestamp: new Date().toISOString()
     });
   });
   
+  // Cuando un administrador solicita la lista de dispositivos
+  socket.on('get-devices', () => {
+    socket.emit('devices-updated', Array.from(connectedDevices.values()));
+  });
+  
   // Cuando un dispositivo se desconecta
-  socket.on('disconnect', () => {
-    console.log('Usuario desconectado:', socket.id);
+  socket.on('disconnect', (reason) => {
+    console.log('Usuario desconectado:', socket.id, 'Razón:', reason);
     connectedDevices.delete(socket.id);
     io.emit('devices-updated', Array.from(connectedDevices.values()));
     console.log(`Dispositivo eliminado: ${socket.id}. Total: ${connectedDevices.size}`);
