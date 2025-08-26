@@ -1,11 +1,12 @@
 {
-  "name": "CamScurityTest",
+  "name": "CamSecurityTest",
   "version": "1.0.0",
-  "description": "Sistema de concientización",
+  "description": "Sistema de concientizacion",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "build": "echo 'No build step required'"
   },
   "dependencies": {
     "express": "^4.18.2",
